@@ -39,7 +39,6 @@ private:
     bool checkPath(int r1,int c1,int r2,int c2);
     void cpuMove();
     void executeMove(AmazonMove m);
-    int quickSimulate(int tempBoard[10][10], int player);
     bool checkGameOver();
     bool isPvPMode = false;
     int userColor = 1;

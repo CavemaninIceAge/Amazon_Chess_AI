@@ -1,0 +1,24 @@
+# Qt / qmake build output
+build/
+build-*/
+*.o
+*.obj
+*.exe
+*.app/
+moc_*.cpp
+moc_*.h
+ui_*.h
+qrc_*.cpp
+Makefile*
+.qmake.stash
+*.pro.user
+*.pro.user.*
+.qtcreator/
+.qtc_clangd/
+
+# Game saves written next to the binary
+*.dat
+
+# OS / editor
+.DS_Store
+Thumbs.db

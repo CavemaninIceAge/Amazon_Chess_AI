@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "ai.h"
 #include <QFile>
 #include <QDataStream>
 #include <QMessageBox>
@@ -147,87 +148,24 @@ bool MainWindow::checkPath(int r1, int c1, int r2, int c2) {
     return board[r2][c2] == 0;
 }
 
-void applyMove(int board[10][10], AmazonMove m) {
-    int piece = board[m.startR][m.startC];
-    board[m.startR][m.startC] = 0;
-    board[m.endR][m.endC] = piece;
-    board[m.arrowR][m.arrowC] = 3;
-}
-int evaluateBoard(int tempBoard[10][10], int player) {
-    int opponent = (player == 1) ? 2 : 1;
-    int myMobility = 0;
-    int oppMobility = 0;
-
-    int dr[] = {-1, 1, 0, 0, -1, -1, 1, 1};
-    int dc[] = {0, 0, -1, 1, -1, 1, -1, 1};
-
-    for (int r = 0; r < 10; r++) {
-        for (int c = 0; c < 10; c++) {
-            if (tempBoard[r][c] == player) {
-                for (int d = 0; d < 8; d++) {
-                    int nr = r + dr[d], nc = c + dc[d];
-                    while (nr >= 0 && nr < 10 && nc >= 0 && nc < 10 && tempBoard[nr][nc] == 0) {
-                        myMobility++;
-                        nr += dr[d]; nc += dc[d];
-                    }
-                }
-            } else if (tempBoard[r][c] == opponent) {
-                for (int d = 0; d < 8; d++) {
-                    int nr = r + dr[d], nc = c + dc[d];
-                    while (nr >= 0 && nr < 10 && nc >= 0 && nc < 10 && tempBoard[nr][nc] == 0) {
-                        oppMobility++;
-                        nr += dr[d]; nc += dc[d];
-                    }
-                }
-            }
-        }
-    }
-
-    return myMobility - oppMobility;
-}
-#include <vector>
-#include <algorithm>
-#include <ctime>
-
 void MainWindow::cpuMove() {
-    std::vector<AmazonMove> allMoves;
-    allMoves.resize(25000);
-    int moveCount = getAllMoves(this->board, currentPlayer, allMoves.data());
+    // Minimax with alpha-beta pruning; iterative deepening up to 6 plies
+    // within a 1.5 s budget (see ai.cpp).
+    SearchResult r = searchBestMove(board, currentPlayer, 6, 1500);
 
-    if (moveCount <= 0) {
+    if (!r.hasMove) {
         ui->labelStatus->setText("游戏结束");
         QMessageBox::information(this, "Game Over", "AI 认输了！");
         return;
     }
-    int bestScore = -999999;
-    int bestIdx = 0;
 
-    int searchLimit = std::min(moveCount, 1000);
-
-    for (int i = 0; i < searchLimit; i++) {
-        AmazonMove m = allMoves[i];
-        int originalPiece = board[m.startR][m.startC];
-        board[m.startR][m.startC] = 0;
-        board[m.endR][m.endC] = originalPiece;
-        board[m.arrowR][m.arrowC] = 3;
-
-        int score = evaluateBoard(this->board, currentPlayer);
-
-        board[m.arrowR][m.arrowC] = 0;
-        board[m.endR][m.endC] = 0;
-        board[m.startR][m.startC] = originalPiece;
-        if (score > bestScore) {
-            bestScore = score;
-            bestIdx = i;
-        }
-    }
-
-    executeMove(allMoves[bestIdx]);
+    executeMove(r.move);
 
     if (checkGameOver()) {
         ui->labelStatus->setText("AI 获胜！");
     } else {
-        ui->labelStatus->setText("轮到玩家行动");
+        ui->labelStatus->setText(QString("轮到玩家行动（AI 搜索深度 %1，%2 个局面，%3 ms）")
+                                     .arg(r.depthReached).arg(r.nodes).arg(r.elapsedMs));
     }
 }
 void MainWindow::on_newGameButton_clicked() {
